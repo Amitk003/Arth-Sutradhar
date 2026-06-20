@@ -24,7 +24,7 @@ Write-Host "`n[1/3] Building & pushing image via Cloud Build..." -ForegroundColo
 gcloud builds submit $RepoRoot `
     --config "$RepoRoot\cloudbuild.yaml" `
     --project $ProjectId `
-    --substitutions "SHORT_SHA=$ImageTag"
+    --substitutions "_TAG=$ImageTag"
 if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "  Image built & pushed" -ForegroundColor Green
 
