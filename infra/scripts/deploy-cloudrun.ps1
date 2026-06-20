@@ -15,17 +15,8 @@ Write-Host "  Deploying Arth-Sutradhar to Cloud Run"
 Write-Host "  Using: gcloud run deploy --source"
 Write-Host "========================================" -ForegroundColor Cyan
 
-# Grant Cloud Build service account storage access first
-Write-Host "`n[1/3] Granting Cloud Build storage permissions..." -ForegroundColor Yellow
-$CB_SA = "${ProjectId}@cloudbuild.gserviceaccount.com"
-gcloud projects add-iam-policy-binding $ProjectId `
-    --member="serviceAccount:$CB_SA" `
-    --role="roles/storage.objectAdmin" `
-    --condition=None 2>&1 | Out-Null
-Write-Host "  Permissions granted (may already exist)" -ForegroundColor Green
-
 # Deploy using --source (Cloud Build handles the Docker build)
-Write-Host "`n[2/3] Deploying to Cloud Run..." -ForegroundColor Yellow
+Write-Host "`n[1/2] Deploying to Cloud Run..." -ForegroundColor Yellow
 gcloud run deploy $ServiceName `
     --source $RepoRoot `
     --region $Region `
@@ -41,7 +32,7 @@ gcloud run deploy $ServiceName `
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 # Get the service URL
-Write-Host "`n[3/3] Getting service URL..." -ForegroundColor Yellow
+Write-Host "`n[2/2] Getting service URL..." -ForegroundColor Yellow
 $Url = gcloud run services describe $ServiceName --region=$Region --project=$ProjectId --format="value(status.url)"
 Write-Host "  Service URL: $Url" -ForegroundColor Green
 
