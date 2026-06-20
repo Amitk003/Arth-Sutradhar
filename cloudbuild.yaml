@@ -5,19 +5,19 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "build"
-      - "-f"
-      - "frontend/api/Dockerfile"
       - "-t"
-      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
       - "."
 
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
-      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
 
 images:
-  - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
 
 substitutions:
   _TAG: latest
+  _REGION: asia-south1
+  _SERVICE: arth-sutradhar-api
