@@ -11,6 +11,8 @@ venv/
 *.tfstate.backup
 .terraform/
 *.tfplan
+terraform.tfvars
+!terraform.tfvars.example
 
 # Node/Frontend
 node_modules/

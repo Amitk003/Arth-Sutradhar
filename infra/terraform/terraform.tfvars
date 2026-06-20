@@ -1,5 +1,0 @@
-project_id = "arth-sutradhar"
-region     = "asia-south1"
-environment = "dev"
-bq_dataset_id = "arth_sutradhar"
-bq_region     = "asia-south1"
