@@ -1,8 +1,6 @@
-# One-time GCP setup script for Arth-Sutradhar
 param(
     [Parameter(Mandatory = $true)]
     [string]$ProjectId,
-
     [Parameter(Mandatory = $false)]
     [string]$Region = "asia-south1"
 )
@@ -29,16 +27,16 @@ $tfBucket = "${ProjectId}-tfstate"
 gsutil ls "gs://$tfBucket" 2>$null
 if ($LASTEXITCODE -ne 0) {
     gcloud storage buckets create "gs://$tfBucket" --location=$Region --uniform-bucket-level-access --versioning
-    Write-Host "  ✓ Bucket $tfBucket created" -ForegroundColor Green
+    Write-Host "  Bucket $tfBucket created" -ForegroundColor Green
 } else {
-    Write-Host "  ✓ Bucket $tfBucket already exists" -ForegroundColor Green
+    Write-Host "  Bucket $tfBucket already exists" -ForegroundColor Green
 }
 
 # Step 4: Configure Docker for Artifact Registry
 Write-Host "`n[4/5] Configuring Docker for Artifact Registry..." -ForegroundColor Yellow
 gcloud auth configure-docker ${Region}-docker.pkg.dev
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  ✓ Docker configured" -ForegroundColor Green
+    Write-Host "  Docker configured" -ForegroundColor Green
 }
 
 # Step 5: Verify setup
