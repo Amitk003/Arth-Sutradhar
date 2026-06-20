@@ -1,4 +1,6 @@
 # Cloud Build configuration for Arth-Sutradhar
+# Usage:
+#   gcloud builds submit . --config=cloudbuild.yaml --project=arth-sutradhar --substitutions=_TAG=latest
 steps:
   - name: "gcr.io/cloud-builders/docker"
     args:
@@ -6,29 +8,16 @@ steps:
       - "-f"
       - "frontend/api/Dockerfile"
       - "-t"
-      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:$SHORT_SHA"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
       - "."
 
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
-      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:$SHORT_SHA"
-
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    entrypoint: gcloud
-    args:
-      - "run"
-      - "deploy"
-      - "arth-sutradhar-api"
-      - "--image=asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:$SHORT_SHA"
-      - "--region=asia-south1"
-      - "--allow-unauthenticated"
-      - "--memory=2Gi"
-      - "--cpu=2"
-      - "--min-instances=0"
-      - "--max-instances=10"
-      - "--timeout=300"
-      - "--set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,PROJECT_ID=$PROJECT_ID,REGION=asia-south1,BQ_DATASET=arth_sutradhar,BQ_TABLE=land_records_chunks,BQ_MODEL=land_records_embedding_model"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
 
 images:
-  - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:$SHORT_SHA"
+  - "asia-south1-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/arth-sutradhar-api:${_TAG}"
+
+substitutions:
+  _TAG: latest
