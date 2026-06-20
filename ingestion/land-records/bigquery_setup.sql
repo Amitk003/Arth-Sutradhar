@@ -43,18 +43,12 @@ FROM ML.GENERATE_TEXT_EMBEDDING(
   (SELECT 'Irrigation: Borewell, Soil Type: Black Cotton Soil, Previous Crop: Wheat (2024), Land Holder Type: Individual, Encumbrances: None recorded.' AS content)
 );
 
--- BLOCK 4: Verify and create vector index
-SELECT chunk_id, ARRAY_LENGTH(content_embedding) AS emb_len FROM `arth-sutradhar.arth_sutradhar.land_records_chunks`;
+-- BLOCK 4: Verify data
+SELECT chunk_id, ARRAY_LENGTH(content_embedding) AS embedding_length
+FROM `arth-sutradhar.arth_sutradhar.land_records_chunks`;
 
-CREATE OR REPLACE VECTOR INDEX `arth-sutradhar.arth_sutradhar.land_records_vector_index`
-ON `arth-sutradhar.arth_sutradhar.land_records_chunks`(content_embedding)
-OPTIONS(
-  index_type = 'IVF',
-  distance_type = 'COSINE',
-  ivf_options = '{"num_lists": 100}'
-);
-
--- BLOCK 5: Test vector search
+-- BLOCK 5: Test vector search (works without index for small data)
+-- VECTOR_SEARCH uses exact search when no index exists.
 SELECT base.chunk_id, base.content, distance
 FROM VECTOR_SEARCH(
   TABLE `arth-sutradhar.arth_sutradhar.land_records_chunks`,
@@ -67,6 +61,18 @@ FROM VECTOR_SEARCH(
     )
   ),
   top_k => 5,
-  distance_type => 'COSINE',
-  fraction_lists_to_search => 0.01
+  distance_type => 'COSINE'
 );
+
+-- ============================================================
+-- PRODUCTION: Create vector index (requires 5000+ rows)
+-- ============================================================
+-- Run this AFTER ingesting at least 5000 records:
+--
+-- CREATE OR REPLACE VECTOR INDEX `arth-sutradhar.arth_sutradhar.land_records_vector_index`
+-- ON `arth-sutradhar.arth_sutradhar.land_records_chunks`(content_embedding)
+-- OPTIONS(
+--   index_type = 'IVF',
+--   distance_type = 'COSINE',
+--   ivf_options = '{"num_lists": 100}'
+-- );
