@@ -1,57 +1,54 @@
 -- ============================================================
 -- Arth-Sutradhar: BigQuery Setup for Land Records Vector Store
 -- ============================================================
--- Run these SQL commands in the BigQuery console.
--- 
--- Prerequisites:
--- 1. BigQuery connection to Vertex AI already exists (via Terraform)
---    Connection name: vertex-ai-embedding
--- 2. IAM role roles/aiplatform.user granted to the connection SA
+-- Run these SQL commands in the BigQuery console sequentially.
 -- ============================================================
 
 -- -------------------------------------------------------
--- Step 1: Create the land records table
+-- Step 1: Drop old table and recreate with correct schema
 -- -------------------------------------------------------
+DROP TABLE IF EXISTS `arth-sutradhar.arth_sutradhar.land_records_chunks`;
+
 CREATE TABLE IF NOT EXISTS `arth-sutradhar.arth_sutradhar.land_records_chunks` (
-  chunk_id      STRING NOT NULL,
-  source_file   STRING NOT NULL,
-  chunk_index   INT64 NOT NULL,
-  content       STRING NOT NULL,
-  content_embedding BYTES,
-  inserted_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+  chunk_id          STRING NOT NULL,
+  source_file       STRING NOT NULL,
+  chunk_index       INT64 NOT NULL,
+  content           STRING NOT NULL,
+  content_embedding ARRAY<FLOAT64>,
+  inserted_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
 ) CLUSTER BY source_file;
 
 -- -------------------------------------------------------
 -- Step 2: Create the remote embedding model
--- -------------------------------------------------------
--- This creates a model backed by Vertex AI's text-multilingual-embedding-002
--- which supports 100+ languages including Gujarati, Hindi, etc.
 -- -------------------------------------------------------
 CREATE OR REPLACE MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`
   REMOTE WITH CONNECTION `asia-south1.vertex-ai-embedding`
   OPTIONS (ENDPOINT = 'text-multilingual-embedding-002');
 
 -- -------------------------------------------------------
--- Step 3: Generate embeddings for existing rows
+-- Step 3: Insert sample text (without embedding)
 -- -------------------------------------------------------
--- Backfill embeddings for any rows that don't have them yet.
--- For production, run this as a scheduled query or after each batch insert.
--- -------------------------------------------------------
-UPDATE `arth-sutradhar.arth_sutradhar.land_records_chunks`
-SET content_embedding = (
-  SELECT ML.GENERATE_TEXT_EMBEDDING(
-    MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
-    (SELECT content AS text_content),
-    STRUCT(TRUE AS flatten_embeddings)
-  )['text_embedding']
-)
-WHERE content_embedding IS NULL;
+INSERT INTO `arth-sutradhar.arth_sutradhar.land_records_chunks`
+  (chunk_id, source_file, chunk_index, content)
+VALUES
+  ('test_7_12_0000', 'test_7_12.pdf', 0, 'Farmer name: Ram Bhai Patel, Khata No: 123, Survey No: 45/2, Crop: Cotton (Irrigated), Area: 1.5 hectares, Village: Gandhinagar, Taluka: Gandhinagar, District: Gandhinagar.'),
+  ('test_7_12_0001', 'test_7_12.pdf', 1, 'Irrigation: Borewell, Soil Type: Black Cotton Soil, Previous Crop: Wheat (2024), Land Holder Type: Individual, Encumbrances: None recorded.');
 
 -- -------------------------------------------------------
--- Step 4: Create vector index for fast similarity search
+-- Step 4: Generate embeddings for rows that need them
 -- -------------------------------------------------------
--- IVF (Inverted File Index) with cosine similarity.
--- The index is created asynchronously.
+UPDATE `arth-sutradhar.arth_sutradhar.land_records_chunks` c
+SET c.content_embedding = (
+  SELECT ml_generate_text_embedding_result
+  FROM ML.GENERATE_TEXT_EMBEDDING(
+    MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
+    (SELECT c.content AS content)
+  )
+)
+WHERE c.content_embedding IS NULL;
+
+-- -------------------------------------------------------
+-- Step 5: Create vector index
 -- -------------------------------------------------------
 CREATE OR REPLACE VECTOR INDEX `arth-sutradhar.arth_sutradhar.land_records_vector_index`
 ON `arth-sutradhar.arth_sutradhar.land_records_chunks`(content_embedding)
@@ -62,40 +59,20 @@ OPTIONS(
 );
 
 -- -------------------------------------------------------
--- Step 5: Insert a new record with embedding in one step
+-- Step 6: Verify with vector search
 -- -------------------------------------------------------
--- Example insert that automatically generates the embedding:
--- -------------------------------------------------------
--- INSERT INTO `arth-sutradhar.arth_sutradhar.land_records_chunks`
---   (chunk_id, source_file, chunk_index, content, content_embedding)
--- SELECT
---   'sample_7_12_0000' AS chunk_id,
---   'sample_7_12.pdf' AS source_file,
---   0 AS chunk_index,
---   'Sample land record content...' AS content,
---   ML.GENERATE_TEXT_EMBEDDING(
---     MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
---     (SELECT 'Sample land record content...' AS text_content),
---     STRUCT(TRUE AS flatten_embeddings)
---   )['text_embedding']
--- ;
-
--- -------------------------------------------------------
--- Step 6: Query with VECTOR_SEARCH
--- -------------------------------------------------------
--- Example search query (to be used by the ADK agent tool):
--- -------------------------------------------------------
--- SELECT * FROM VECTOR_SEARCH(
---   TABLE `arth-sutradhar.arth_sutradhar.land_records_chunks`,
---   'content_embedding',
---   (
---     SELECT ML.GENERATE_TEXT_EMBEDDING(
---       MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
---       (SELECT 'irrigated cotton land in small farm' AS text_content),
---       STRUCT(TRUE AS flatten_embeddings)
---     )['text_embedding']
---   ),
---   top_k => 10,
---   distance_type => 'COSINE',
---   fraction_lists_to_search => 0.01
--- );
+SELECT base.chunk_id, base.content, distance
+FROM VECTOR_SEARCH(
+  TABLE `arth-sutradhar.arth_sutradhar.land_records_chunks`,
+  'content_embedding',
+  (
+    SELECT ml_generate_text_embedding_result
+    FROM ML.GENERATE_TEXT_EMBEDDING(
+      MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
+      (SELECT 'cotton farmer with irrigation' AS content)
+    )
+  ),
+  top_k => 5,
+  distance_type => 'COSINE',
+  fraction_lists_to_search => 0.01
+);
