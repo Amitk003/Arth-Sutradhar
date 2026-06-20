@@ -2,7 +2,6 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy only the needed files (build context is repo root)
 COPY frontend/api/requirements.txt .
 COPY agent/ agent/
 COPY frontend/api/ frontend/api/

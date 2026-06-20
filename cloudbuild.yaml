@@ -1,0 +1,23 @@
+# Cloud Build configuration for Arth-Sutradhar
+# Usage:
+#   gcloud builds submit . --config=cloudbuild.yaml --project=arth-sutradhar --substitutions=_TAG=latest
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/arth-sutradhar/${_SERVICE}:${_TAG}"
+
+substitutions:
+  _TAG: latest
+  _REGION: asia-south1
+  _SERVICE: arth-sutradhar-api
