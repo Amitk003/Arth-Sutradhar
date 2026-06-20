@@ -28,7 +28,15 @@
 - Created `docs/architecture.md` - Full system architecture with ASCII diagram
 - Created `docs/phase-0-foundation.md` - Phase 0 completion documentation
 
+## [2026-06-20 21:50] Phase 0 Complete
+- User ran `setup-gcp.ps1` successfully
+- Terraform `apply` succeeded - GCP resources provisioned
+- IAM permissions configured for BigQuery → Vertex AI connection
+- All 3 storage buckets created
+- BigQuery dataset `arth_sutradhar` created
+- Artifact Registry created
+- IAM binding for `roles/aiplatform.user` granted to BigQuery connection SA
+
 ## Next Steps
-- [ ] User runs `setup-gcp.ps1 -ProjectId arth-sutradhar`
-- [ ] User creates `terraform.tfvars` and runs `terraform apply`
-- [ ] Proceed to Phase 1: Data Pipeline - Dual Ingestion
+- [x] Phase 0 Foundation Complete
+- [ ] Start Phase 1: Data Pipeline - Dual Ingestion
