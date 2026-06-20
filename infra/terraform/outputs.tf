@@ -21,7 +21,3 @@ output "bq_embedding_connection" {
 output "artifact_registry" {
   value = google_artifact_registry_repository.main.repository_id
 }
-
-output "cloud_run_api_url" {
-  value = google_cloud_run_v2_service.agent_api.uri
-}
