@@ -1,44 +1,39 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$ProjectId,
-    [Parameter(Mandatory = $false)]
-    [string]$Region = "asia-south1"
+    [string]$ProjectId
 )
 
+$ServiceAccount = "bqcx-638364788058-k6d7@gcp-sa-bigquery-condel.iam.gserviceaccount.com"
+$Role = "roles/aiplatform.user"
+
 Write-Host "Configuring BigQuery Vertex AI IAM permissions..." -ForegroundColor Cyan
+Write-Host "  Service Account: $ServiceAccount" -ForegroundColor Yellow
+Write-Host "  Role: $Role" -ForegroundColor Yellow
 
-# Get the BigQuery connection service account
-Write-Host "  Getting BigQuery connection service account..." -ForegroundColor Yellow
-$connInfo = gcloud bigquery connections describe "vertex-ai-embedding" --location=$Region --project=$ProjectId --format="json" 2>$null | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Connection not found. Run terraform apply first." -ForegroundColor Red
-    exit 1
-}
-
-$sa = $connInfo.cloudResource.serviceAccountId
-Write-Host "  Service Account: $sa" -ForegroundColor Green
-
-# Grant Vertex AI User role
-Write-Host "  Granting roles/aiplatform.user to the connection service account..." -ForegroundColor Yellow
+Write-Host "`n[1/2] Granting IAM role..." -ForegroundColor Yellow
 gcloud projects add-iam-policy-binding $ProjectId `
-    --member="serviceAccount:$sa" `
-    --role="roles/aiplatform.user" `
-    --condition=None
+    --member="serviceAccount:$ServiceAccount" `
+    --role=$Role `
+    --condition=None 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "  IAM permission granted successfully!" -ForegroundColor Green
+    Write-Host "  IAM permission granted!" -ForegroundColor Green
 } else {
-    Write-Host "  Failed to grant IAM permission. Trying alternative approach..." -ForegroundColor Yellow
-    
-    # Alternative: Grant at the dataset level
-    Write-Host "  Granting at BigQuery dataset level instead..." -ForegroundColor Yellow
-    gcloud alpha dataplex assets add-iam-policy-binding ... 2>$null
-    
-    # Fallback manual instructions
-    Write-Host "`nManual step - run this command in Cloud Shell:" -ForegroundColor Yellow
-    Write-Host "  gcloud projects add-iam-policy-binding $ProjectId \`"
-    Write-Host "    --member='serviceAccount:$sa' \`"
-    Write-Host "    --role='roles/aiplatform.user'" -ForegroundColor White
+    Write-Host "  Project-level binding failed." -ForegroundColor Yellow
+    Write-Host "`n  Alternative - grant at the BigQuery dataset level:" -ForegroundColor Yellow
+    Write-Host "  1. Open https://console.cloud.google.com/bigquery?project=$ProjectId" -ForegroundColor White
+    Write-Host "  2. Go to the 'arth_sutradhar' dataset" -ForegroundColor White
+    Write-Host "  3. Share dataset and add:" -ForegroundColor White
+    Write-Host "     Principal: $ServiceAccount" -ForegroundColor White
+    Write-Host "     Role: Vertex AI User" -ForegroundColor White
+}
+
+Write-Host "`n[2/2] Verifying..." -ForegroundColor Yellow
+gcloud projects get-iam-policy $ProjectId --format=json 2>$null | Select-String -Pattern $ServiceAccount
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  Permission verified!" -ForegroundColor Green
+} else {
+    Write-Host "  Check the GCP console to confirm." -ForegroundColor Yellow
 }
 
 Write-Host "`nDone!" -ForegroundColor Cyan
