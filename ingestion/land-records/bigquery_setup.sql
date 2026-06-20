@@ -39,7 +39,7 @@ VALUES
 -- -------------------------------------------------------
 UPDATE `arth-sutradhar.arth_sutradhar.land_records_chunks` c
 SET c.content_embedding = (
-  SELECT ml_generate_text_embedding_result
+  SELECT text_embedding
   FROM ML.GENERATE_TEXT_EMBEDDING(
     MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
     (SELECT c.content AS content)
@@ -66,7 +66,7 @@ FROM VECTOR_SEARCH(
   TABLE `arth-sutradhar.arth_sutradhar.land_records_chunks`,
   'content_embedding',
   (
-    SELECT ml_generate_text_embedding_result
+    SELECT text_embedding
     FROM ML.GENERATE_TEXT_EMBEDDING(
       MODEL `arth-sutradhar.arth_sutradhar.land_records_embedding_model`,
       (SELECT 'cotton farmer with irrigation' AS content)
