@@ -1,7 +1,13 @@
 -- ============================================================
 -- Batch insert to generate 5000+ records for vector index
 -- ============================================================
--- Uses random embedding vectors for bulk test data.
+-- Uses random embedding vectors (768-dim) for bulk test data.
+-- Matches the output dimension of text-multilingual-embedding-002.
+-- ============================================================
+
+-- Clean up any previous synthetic rows first
+DELETE FROM `arth-sutradhar.arth_sutradhar.land_records_chunks`
+WHERE chunk_id LIKE 'synth_7_12_%';
 -- Real embeddings should be generated via ML.GENERATE_TEXT_EMBEDDING
 -- on actual land record PDFs using the Python ingestion script.
 -- ============================================================
@@ -62,11 +68,11 @@ SELECT
     0.5 + CAST(MOD(n, 20) AS FLOAT64) * 0.5,
     (SELECT name FROM villages WHERE id = MOD(n, 10) + 1)
   ) AS content,
-  -- Generate a random 4-dimension embedding vector for testing
-  -- Real embeddings use 768 dimensions via text-multilingual-embedding-002
+  -- Generate a random 768-dimension embedding vector
+  -- Matches the output dimension of text-multilingual-embedding-002
   ARRAY(
     SELECT RAND() * 2 - 1
-    FROM UNNEST(GENERATE_ARRAY(1, 4))
+    FROM UNNEST(GENERATE_ARRAY(1, 768))
   ) AS content_embedding
 FROM numbers;
 
