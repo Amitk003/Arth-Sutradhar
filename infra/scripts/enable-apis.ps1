@@ -1,4 +1,3 @@
-# Enable GCP APIs for Arth-Sutradhar
 param(
     [Parameter(Mandatory = $true)]
     [string]$ProjectId
@@ -26,9 +25,9 @@ foreach ($api in $apis) {
     Write-Host "  Enabling $api..." -ForegroundColor Yellow
     gcloud services enable $api --project $ProjectId
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "    ✓ $api enabled" -ForegroundColor Green
+        Write-Host "    OK $api enabled" -ForegroundColor Green
     } else {
-        Write-Host "    ✗ $api FAILED" -ForegroundColor Red
+        Write-Host "    FAILED $api" -ForegroundColor Red
     }
 }
 
