@@ -38,7 +38,7 @@ if ($LASTEXITCODE -eq 0) {
 
 Write-Host "`n[5/5] Verifying setup..." -ForegroundColor Yellow
 gcloud config list
-gcloud services list --enabled --project $ProjectId | Select-String -Pattern "aiplatform|bigquery|cloudrun"
+gcloud services list --enabled --project $ProjectId | Select-String -Pattern "aiplatform|bigquery|run"
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  GCP Setup Complete!"

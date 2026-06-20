@@ -5,7 +5,6 @@ resource "google_project_service" "apis" {
     "bigquery.googleapis.com",
     "bigqueryconnection.googleapis.com",
     "storage.googleapis.com",
-    "cloudrun.googleapis.com",
     "artifactregistry.googleapis.com",
     "eventarc.googleapis.com",
     "cloudbuild.googleapis.com",
