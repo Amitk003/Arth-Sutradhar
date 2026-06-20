@@ -1,0 +1,17 @@
+# Docker ignore for Arth-Sutradhar API
+**/.git
+**/.gitignore
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.terraform
+**/*.tfstate
+**/.env
+**/.venv
+**/venv
+**/data/raw
+**/data/processed
+**/logs
+**/docs
+**/*.md
+!frontend/api/Dockerfile

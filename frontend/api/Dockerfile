@@ -2,10 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy only the needed files (build context is repo root)
+COPY frontend/api/requirements.txt .
+COPY agent/ agent/
+COPY frontend/api/ frontend/api/
 
-COPY . .
+RUN pip install --no-cache-dir -r requirements.txt
 
 ENV PYTHONPATH=/app
 ENV PORT=8080
