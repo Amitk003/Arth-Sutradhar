@@ -19,7 +19,6 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "`n[1/2] Deploying to Cloud Run..." -ForegroundColor Yellow
 gcloud run deploy $ServiceName `
     --source $RepoRoot `
-    --dockerfile "$RepoRoot\frontend\api\Dockerfile" `
     --region $Region `
     --project $ProjectId `
     --allow-unauthenticated `
