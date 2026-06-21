@@ -62,6 +62,7 @@ class ArthSutradharAgent:
         self.genai_client = genai.Client(
             project=self.project_id,
             location=agent_config.GEMINI_LOCATION,
+            vertexai=True,
         )
         self.genai_model = agent_config.GEMINI_MODEL
         self.bq_tool = BigQueryVectorSearchTool()
