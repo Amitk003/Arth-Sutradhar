@@ -46,7 +46,7 @@ gcloud run deploy $ServiceName `
     --max-instances 10 `
     --concurrency 80 `
     --timeout 300 `
-    --set-env-vars "GOOGLE_CLOUD_PROJECT=$ProjectId,PROJECT_ID=$ProjectId,REGION=$Region,BQ_DATASET=arth_sutradhar,BQ_TABLE=land_records_chunks,BQ_MODEL=land_records_embedding_model"
+    --set-env-vars "GOOGLE_CLOUD_PROJECT=$ProjectId,PROJECT_ID=$ProjectId,REGION=$Region,BQ_DATASET=arth_sutradhar,BQ_TABLE=land_records_chunks,BQ_MODEL=land_records_embedding_model,GEMINI_LOCATION=us-central1"
 
 if ($LASTEXITCODE -ne 0) { exit 1 }
 

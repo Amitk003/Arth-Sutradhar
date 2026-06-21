@@ -6,7 +6,7 @@ Implements the 5-phase Sufficient Context Agent loop:
    2. Search (Data Fanout)
    3. Context Check (Sufficient Context Agent)
    4. Iteration (Query Rewriter)
-   5. Synthesis (Report generation)
+   5. Synthesis (Report generation via Gemini 2.5 Flash)
 """
 
 
@@ -14,11 +14,26 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from google import genai
+from google.genai import types as genai_types
+
 from agent.tools.bigquery_tool import BigQueryVectorSearchTool
 from agent.tools.mcp_tool import MCPTool
 from agent.tools import config as agent_config
 
 logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """You are Arth-Sutradhar, an expert agricultural and economic analyst for India.
+Your role is to synthesize retrieved data from land records and macroeconomic sources into a clear, accurate, and narrative response.
+
+Guidelines:
+- Ground every claim in the retrieved data — do not fabricate numbers or facts.
+- If the data has gaps, state what is known and what is missing honestly.
+- Write in plain text with clear sections. Use short paragraphs.
+- Keep the response concise (under 500 words unless the query demands depth).
+- If the agent needed multiple iterations to find data, mention the self-correction briefly.
+- Do NOT use markdown formatting like **bold** or bullet lists. Use plain text with line breaks."""
+
 
 @dataclass
 class AgentState:
@@ -39,11 +54,17 @@ class ArthSutradharAgent:
 
     The agent autonomously decides which tools to invoke, checks if the
     retrieved context is sufficient, iterates if needed, and synthesizes
-    the final response using Gemini 1.5 Pro.
+    the final response using Gemini 2.5 Flash.
     """
 
     def __init__(self, project_id: str | None = None):
         self.project_id = project_id or agent_config.PROJECT_ID
+        self.genai_client = genai.Client(
+            project=self.project_id,
+            location=agent_config.GEMINI_LOCATION,
+            vertexai=True,
+        )
+        self.genai_model = agent_config.GEMINI_MODEL
         self.bq_tool = BigQueryVectorSearchTool()
         self.mcp_tool = MCPTool()
         self.state = AgentState(user_query="")
@@ -95,28 +116,42 @@ class ArthSutradharAgent:
 
         for task in self.state.plan:
             if task == "query_land_records":
-                results = self.bq_tool.search(self.state.user_query)
-                self.state.retrieved_context["land_records"] = results
-                self.state.feedback_log.append(
-                    f"BigQuery returned {len(results)} land records"
-                )
+                try:
+                    results = self.bq_tool.search(self.state.user_query)
+                    self.state.retrieved_context["land_records"] = results
+                    self.state.feedback_log.append(
+                        f"BigQuery returned {len(results)} land records"
+                    )
+                except Exception as e:
+                    logger.error("BQ search failed: %s", e)
+                    self.state.retrieved_context["land_records"] = []
+                    self.state.feedback_log.append(
+                        f"BigQuery search failed: {e}"
+                    )
 
             elif task == "query_macro_data":
-                datasets = self.mcp_tool.list_datasets()
-                data_points = []
-                for ds in datasets:
-                    indicators = self.mcp_tool.get_indicators(ds["id"])
-                    for ind in indicators[:2]:
-                        data = self.mcp_tool.get_data(
-                            ds["id"], ind["id"],
-                            state_code=agent_config.STATE_CODE,
-                            financial_year=agent_config.FINANCIAL_YEAR,
-                        )
-                        data_points.extend(data)
-                self.state.retrieved_context["macro_data"] = data_points
-                self.state.feedback_log.append(
-                    f"MCP returned {len(data_points)} data points"
-                )
+                try:
+                    datasets = self.mcp_tool.list_datasets()
+                    data_points = []
+                    for ds in datasets:
+                        indicators = self.mcp_tool.get_indicators(ds["id"])
+                        for ind in indicators[:2]:
+                            data = self.mcp_tool.get_data(
+                                ds["id"], ind["id"],
+                                state_code=agent_config.STATE_CODE,
+                                financial_year=agent_config.FINANCIAL_YEAR,
+                            )
+                            data_points.extend(data)
+                    self.state.retrieved_context["macro_data"] = data_points
+                    self.state.feedback_log.append(
+                        f"MCP returned {len(data_points)} data points"
+                    )
+                except Exception as e:
+                    logger.error("MCP fetch failed: %s", e)
+                    self.state.retrieved_context["macro_data"] = []
+                    self.state.feedback_log.append(
+                        f"MCP data fetch failed: {e}"
+                    )
 
     def _phase_3_context_check(self):
         """Phase 3: Check if retrieved context is sufficient."""
@@ -158,13 +193,68 @@ class ArthSutradharAgent:
         )
 
     def _phase_5_synthesize(self):
-        """Phase 5: Generate final response using Gemini."""
-        logger.info("Phase 5 - Synthesis")
+        """Phase 5: Synthesize final response using Gemini 2.5 Flash."""
+        logger.info("Phase 5 - Synthesis with Gemini")
 
         land_records = self.state.retrieved_context.get("land_records", [])
         macro_data = self.state.retrieved_context.get("macro_data", [])
 
-        parts = ["Arth-Sutradhar Analysis Report", "=" * 40, ""]
+        context_parts = [f"User Query: {self.state.user_query}", ""]
+
+        if land_records:
+            context_parts.append("Retrieved Land Records:")
+            for r in land_records:
+                context_parts.append(f"  - [{r.source_file}] {r.content[:300]}")
+            context_parts.append("")
+
+        if macro_data:
+            context_parts.append("Retrieved Macroeconomic Data:")
+            for d in macro_data:
+                context_parts.append(f"  - {d.dataset}/{d.indicator}: {d.value} {d.unit}")
+            context_parts.append("")
+
+        context_parts.append("Agent Reasoning Log:")
+        for log in self.state.feedback_log:
+            context_parts.append(f"  > {log}")
+        context_parts.append("")
+        context_parts.append(
+            "Produce a well-structured narrative analysis report based on the above data. "
+            "Start directly with the analysis — do not preface it."
+        )
+
+        prompt = "\n".join(context_parts)
+
+        try:
+            response = self.genai_client.models.generate_content(
+                model=self.genai_model,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    temperature=0.2,
+                    max_output_tokens=4096,
+                    system_instruction=SYSTEM_PROMPT,
+                ),
+            )
+            synthesized = response.text
+            self.state.feedback_log.append(
+                "Phase 5: Gemini 2.5 Flash synthesis complete"
+            )
+            logger.info("Gemini synthesis successful (%d chars)", len(synthesized))
+        except Exception as e:
+            logger.error("Gemini synthesis failed: %s", e)
+            self.state.feedback_log.append(
+                f"Gemini synthesis failed, using fallback: {e}"
+            )
+            synthesized = self._fallback_synthesis(land_records, macro_data)
+
+        self.state.final_response = synthesized
+
+    def _fallback_synthesis(
+        self,
+        land_records: list,
+        macro_data: list,
+    ) -> str:
+        """Fallback when Gemini API is unavailable."""
+        parts = ["Arth-Sutradhar Analysis Report (Fallback)", "=" * 40, ""]
         parts.append(f"Query: {self.state.user_query}")
         parts.append(f"Iterations: {self.state.iteration_count}")
         parts.append("")
@@ -183,4 +273,4 @@ class ArthSutradharAgent:
         for log in self.state.feedback_log:
             parts.append(f"  > {log}")
 
-        self.state.final_response = "\n".join(parts)
+        return "\n".join(parts)
