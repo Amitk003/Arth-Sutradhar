@@ -33,39 +33,43 @@ class BigQueryVectorSearchTool:
         self.client = bigquery.Client(project=PROJECT)
 
     def search(self, query_text: str, top_k: int = 10) -> list[SearchResult]:
-        vector_search_query = f"""
-        SELECT base.chunk_id, base.content, base.source_file, distance
-        FROM VECTOR_SEARCH(
-            TABLE `{PROJECT}.{DATASET}.{TABLE}`,
-            'content_embedding',
-            (
-              SELECT text_embedding
-              FROM ML.GENERATE_TEXT_EMBEDDING(
-                MODEL `{MODEL}`,
-                (SELECT @query_text AS content)
-              )
-            ),
-            top_k => @top_k,
-            distance_type => 'COSINE'
-        )
-        """
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("query_text", "STRING", query_text),
-                bigquery.ScalarQueryParameter("top_k", "INT64", top_k),
-            ]
-        )
-        results = self.client.query(vector_search_query, job_config=job_config).result()
-
-        return [
-            SearchResult(
-                chunk_id=r.chunk_id,
-                content=r.content,
-                source_file=r.source_file,
-                distance=r.distance,
+        try:
+            vector_search_query = f"""
+            SELECT base.chunk_id, base.content, base.source_file, distance
+            FROM VECTOR_SEARCH(
+                TABLE `{PROJECT}.{DATASET}.{TABLE}`,
+                'content_embedding',
+                (
+                  SELECT text_embedding
+                  FROM ML.GENERATE_TEXT_EMBEDDING(
+                    MODEL `{MODEL}`,
+                    (SELECT @query_text AS content)
+                  )
+                ),
+                top_k => @top_k,
+                distance_type => 'COSINE'
             )
-            for r in results
-        ]
+            """
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("query_text", "STRING", query_text),
+                    bigquery.ScalarQueryParameter("top_k", "INT64", top_k),
+                ]
+            )
+            results = self.client.query(vector_search_query, job_config=job_config).result()
+
+            return [
+                SearchResult(
+                    chunk_id=r.chunk_id,
+                    content=r.content,
+                    source_file=r.source_file,
+                    distance=r.distance,
+                )
+                for r in results
+            ]
+        except Exception as e:
+            logger.warning("BigQuery vector search failed: %s", e)
+            return []
 
     def format_results(self, results: list[SearchResult]) -> str:
         if not results:

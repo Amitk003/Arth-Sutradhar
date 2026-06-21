@@ -462,6 +462,7 @@
   <div class="card" id="resultCard" style="display:none">
     <div class="card-header">
       <span>Analysis Result</span>
+      <span id="multiHopBadge" style="display:none;font-size:11px;font-weight:500;background:#0d9488;color:white;padding:2px 10px;border-radius:100px;">&#x21BB; Multi-hop</span>
       <span class="log-link" id="toggleLog" onclick="toggleLog()">Show reasoning</span>
     </div>
     <div class="card-body">
@@ -473,7 +474,7 @@
   </div>
 
   <div class="card" id="logCard" style="display:none">
-    <div class="card-header">
+    <div class="card-header" id="reasoningHeader">
       <span>Agent Reasoning Log</span>
       <span class="badge" id="logCount"></span>
     </div>
@@ -507,8 +508,11 @@ const toggleLogLink = document.getElementById('toggleLog');
 const emptyState = document.getElementById('emptyState');
 const errorBanner = document.getElementById('errorBanner');
 const copyBtn = document.getElementById('copyBtn');
+const reasoningHeader = document.getElementById('reasoningHeader');
+const multiHopBadge = document.getElementById('multiHopBadge');
 
 let fullResponse = '';
+let lastIterationCount = 0;
 
 // ─── Theme ───
 function toggleTheme() {
@@ -603,6 +607,9 @@ async function sendQuery() {
   errorBanner.style.display = 'none';
   iterCount.textContent = '';
   fullResponse = '';
+  multiHopBadge.style.display = 'none';
+  copyBtn.textContent = '\uD83D\uDCCB Copy';
+  copyBtn.classList.remove('copied');
 
   try {
     const res = await fetch(`${API_URL}/query`, {
@@ -619,6 +626,7 @@ async function sendQuery() {
 
     const data = await res.json();
     fullResponse = data.response || '';
+    lastIterationCount = data.iteration_count || 0;
 
     resultCard.style.display = 'block';
     resultCard.classList.remove('slide-in');
@@ -626,16 +634,35 @@ async function sendQuery() {
     resultCard.classList.add('slide-in');
 
     if (data.iteration_count !== undefined) {
-      iterCount.textContent = `\u2699 Iterations: ${data.iteration_count}`;
+      const multiHop = data.iteration_count > 0 ? ' \u21BB self-corrected' : '';
+      iterCount.textContent = `\u2699 Iterations: ${data.iteration_count}${multiHop}`;
+      multiHopBadge.style.display = data.iteration_count > 0 ? 'inline' : 'none';
     }
 
     await typeText(analysisText, fullResponse);
 
     if (data.feedback_log && data.feedback_log.length > 0) {
-      logBody.innerHTML = data.feedback_log.map(l =>
-        `<div class="feedback-item">${escapeHtml(l)}</div>`
-      ).join('');
+      const stages = data.feedback_log.map(l => {
+        let stage = '';
+        if (l.startsWith('Plan')) stage = '\uD83D\uDCDD Plan';
+        else if (l.startsWith('BigQuery')) stage = '\uD83D\uDD0D Search';
+        else if (l.startsWith('MCP')) stage = '\uD83D\uDD0D Search';
+        else if (l.startsWith('Missing') || l.startsWith('Context')) stage = '\u2705 Check';
+        else if (l.startsWith('Rewritten')) stage = '\u21BB Rewrite';
+        else if (l.startsWith('Phase 5') || l.includes('synthesis')) stage = '\u2728 Synthesize';
+        else stage = '\u2699 Agent';
+        return `<div class="feedback-item"><strong>${stage}:</strong> ${escapeHtml(l)}</div>`;
+      }).join('');
+      logBody.innerHTML = stages;
       logCount.textContent = `${data.feedback_log.length} step${data.feedback_log.length > 1 ? 's' : ''}`;
+
+      if (lastIterationCount > 0) {
+        reasoningHeader.innerHTML = '<span>\uD83E\uDD16 Agent Reasoning Log <span style="font-weight:400;font-size:12px;color:var(--text-muted)">(multi-hop self-correction)</span></span>';
+        logCard.style.display = 'block';
+        logVisible = true;
+        toggleLogLink.textContent = 'Hide reasoning';
+        logCard.classList.add('slide-in');
+      }
     }
 
     input.value = '';
