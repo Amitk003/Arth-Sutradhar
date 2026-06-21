@@ -3,10 +3,17 @@ param(
     [string]$ProjectId
 )
 
-$ServiceAccount = "bqcx-638364788058-k6d7@gcp-sa-bigquery-condel.iam.gserviceaccount.com"
+$ProjectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)" 2>$null
+if (-not $ProjectNumber) {
+    Write-Host "  Could not determine project number. Aborting." -ForegroundColor Red
+    exit 1
+}
+
+$ServiceAccount = "bqcx-${ProjectNumber}-k6d7@gcp-sa-bigquery-condel.iam.gserviceaccount.com"
 $Role = "roles/aiplatform.user"
 
 Write-Host "Configuring BigQuery Vertex AI IAM permissions..." -ForegroundColor Cyan
+Write-Host "  Project: $ProjectId ($ProjectNumber)" -ForegroundColor Yellow
 Write-Host "  Service Account: $ServiceAccount" -ForegroundColor Yellow
 Write-Host "  Role: $Role" -ForegroundColor Yellow
 
@@ -29,7 +36,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Write-Host "`n[2/2] Verifying..." -ForegroundColor Yellow
-gcloud projects get-iam-policy $ProjectId --format=json 2>$null | Select-String -Pattern $ServiceAccount
+gcloud projects get-iam-policy $ProjectId --format=json 2>$null | Select-String -Pattern $ProjectNumber
 if ($LASTEXITCODE -eq 0) {
     Write-Host "  Permission verified!" -ForegroundColor Green
 } else {

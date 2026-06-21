@@ -14,6 +14,11 @@ venv/
 terraform.tfvars
 !terraform.tfvars.example
 
+# Environment
+.env
+.env.local
+.env.production
+
 # Node/Frontend
 node_modules/
 npm-debug.log*
@@ -21,8 +26,6 @@ yarn-debug.log*
 yarn-error.log*
 dist/
 build/
-.env.local
-.env.production
 
 # IDE
 .vscode/
@@ -37,7 +40,6 @@ Thumbs.db
 
 # GCP
 *.json
-!service-account.json
 application_default_credentials.json
 
 # Logs

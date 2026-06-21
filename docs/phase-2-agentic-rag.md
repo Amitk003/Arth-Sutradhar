@@ -33,9 +33,9 @@ User Query
 ┌─────────────────┐       ┌──────────────────────────┐
 │ Phase 5:        │       │ Phase 4: Iteration        │
 │ Synthesis       │       │ (Query Rewriter Agent)    │
-│ - Gemini 1.5    │       │ - Rewrites query params   │
-│ - Generate      │       │ - Re-runs Phase 2         │
-│   response      │       └──────────────────────────┘
+│ - Format report │       │ - Rewrites query params   │
+│ - Concatenate   │       │ - Re-runs Phase 2         │
+│   results       │       └──────────────────────────┘
 └─────────────────┘
 ```
 
@@ -67,10 +67,11 @@ curl -X POST http://localhost:8080/query \
 
 ### 3. Docker Build & Deploy to Cloud Run
 ```bash
-gcloud builds submit --tag asia-south1-docker.pkg.dev/arth-sutradhar/arth-sutradhar/agent-api:latest
+gcloud builds submit . --config=cloudbuild.yaml --project=arth-sutradhar --substitutions=_TAG=latest
 gcloud run deploy arth-sutradhar-api \
-  --image asia-south1-docker.pkg.dev/arth-sutradhar/arth-sutradhar/agent-api:latest \
+  --image asia-south1-docker.pkg.dev/arth-sutradhar/arth-sutradhar/arth-sutradhar-api:latest \
   --region asia-south1 \
+  --project=arth-sutradhar \
   --allow-unauthenticated
 ```
 

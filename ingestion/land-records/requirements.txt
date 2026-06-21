@@ -4,5 +4,5 @@ google-cloud-aiplatform>=1.60.0
 google-cloud-documentai>=2.29.0
 langchain>=0.3.0
 langchain-google-community>=1.0.0
-pypdf2>=3.0.0
+PyPDF2>=3.0.0
 python-dotenv>=1.0.0

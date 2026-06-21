@@ -7,7 +7,7 @@ from google.cloud import bigquery, storage
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from PyPDF2 import PdfReader
 
-from config import (
+from ingestion.land_records.config import (
     PROJECT_ID, DATASET_ID, TABLE_ID, RAW_BUCKET,
     CHUNK_SIZE, CHUNK_OVERLAP, REGION,
 )

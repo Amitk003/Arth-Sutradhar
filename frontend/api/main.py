@@ -12,9 +12,11 @@ import logging
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agent.adk.orchestrator import ArthSutradharAgent
+from agent.tools import config as agent_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -25,7 +27,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
-agent = ArthSutradharAgent(project_id="arth-sutradhar")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class QueryRequest(BaseModel):
@@ -53,6 +61,7 @@ async def health():
 async def query(request: QueryRequest):
     logger.info("Query received: %s (lang: %s)", request.text[:100], request.language)
     try:
+        agent = ArthSutradharAgent()
         text = request.text
         response = agent.run(text)
         return QueryResponse(
@@ -73,6 +82,7 @@ async def query_with_image(file: UploadFile):
     """
     logger.info("Image upload received: %s", file.filename)
     contents = await file.read()
+    agent = ArthSutradharAgent()
 
     try:
         from google.cloud import vision
