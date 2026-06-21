@@ -14,8 +14,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-import vertexai
-from vertexai.generative_models import GenerativeModel, GenerationConfig
+from google import genai
+from google.genai import types as genai_types
 
 from agent.tools.bigquery_tool import BigQueryVectorSearchTool
 from agent.tools.mcp_tool import MCPTool
@@ -59,11 +59,11 @@ class ArthSutradharAgent:
 
     def __init__(self, project_id: str | None = None):
         self.project_id = project_id or agent_config.PROJECT_ID
-        vertexai.init(project=self.project_id, location=agent_config.GEMINI_LOCATION)
-        self.llm = GenerativeModel(
-            agent_config.GEMINI_MODEL,
-            system_instruction=[SYSTEM_PROMPT],
+        self.genai_client = genai.Client(
+            project=self.project_id,
+            location=agent_config.GEMINI_LOCATION,
         )
+        self.genai_model = agent_config.GEMINI_MODEL
         self.bq_tool = BigQueryVectorSearchTool()
         self.mcp_tool = MCPTool()
         self.state = AgentState(user_query="")
@@ -224,11 +224,13 @@ class ArthSutradharAgent:
         prompt = "\n".join(context_parts)
 
         try:
-            response = self.llm.generate_content(
-                prompt,
-                generation_config=GenerationConfig(
+            response = self.genai_client.models.generate_content(
+                model=self.genai_model,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
                     temperature=0.2,
                     max_output_tokens=4096,
+                    system_instruction=SYSTEM_PROMPT,
                 ),
             )
             synthesized = response.text
