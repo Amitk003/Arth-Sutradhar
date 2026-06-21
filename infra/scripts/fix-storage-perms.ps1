@@ -3,11 +3,16 @@ param(
     [string]$ProjectId
 )
 
-Write-Host "Granting storage permissions to the default compute service account..." -ForegroundColor Cyan
+Write-Host "Granting storage permissions to default compute service account..." -ForegroundColor Cyan
 
-$SA = "638364788058-compute@developer.gserviceaccount.com"
+$ProjectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)" 2>$null
+if (-not $ProjectNumber) {
+    Write-Host "  Could not determine project number. Aborting." -ForegroundColor Red
+    exit 1
+}
 
-# Grant storage.objectAdmin on the specific build buckets
+$SA = "${ProjectNumber}-compute@developer.gserviceaccount.com"
+
 $buckets = @(
     "run-sources-${ProjectId}-asia-south1",
     "${ProjectId}_cloudbuild"
@@ -23,4 +28,4 @@ foreach ($bucket in $buckets) {
     }
 }
 
-Write-Host "`nDone! Try deploying again." -ForegroundColor Cyan
+Write-Host "`nDone!" -ForegroundColor Cyan

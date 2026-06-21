@@ -20,7 +20,7 @@ from typing import Any
 from google.cloud import documentai
 from google.cloud.documentai import Document
 
-from config import PROJECT_ID, REGION
+from ingestion.land_records.config import PROJECT_ID, REGION
 
 logger = logging.getLogger(__name__)
 

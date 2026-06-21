@@ -22,5 +22,5 @@ Agent Development Kit (ADK) multi-agent configuration for the 5-phase Sufficient
 - Corrects API params or generates new search terms
 
 ### 5. Synthesis Agent
-- Uses Gemini 1.5 Pro's long context window
-- Generates grounded, narrative response
+- Formats retrieved land records and macro data into structured report
+- Includes agent reasoning log for transparency

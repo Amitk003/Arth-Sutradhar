@@ -2,12 +2,13 @@
 Arth-Sutradhar Agent Orchestrator
 
 Implements the 5-phase Sufficient Context Agent loop:
-  1. Orchestration (Planner)
-  2. Search (Data Fanout)
-  3. Context Check (Sufficient Context Agent)
-  4. Iteration (Query Rewriter)
-  5. Synthesis (Gemini generation)
+   1. Orchestration (Planner)
+   2. Search (Data Fanout)
+   3. Context Check (Sufficient Context Agent)
+   4. Iteration (Query Rewriter)
+   5. Synthesis (Report generation)
 """
+
 
 import logging
 from dataclasses import dataclass, field
@@ -15,9 +16,9 @@ from typing import Any
 
 from agent.tools.bigquery_tool import BigQueryVectorSearchTool
 from agent.tools.mcp_tool import MCPTool
+from agent.tools import config as agent_config
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class AgentState:
@@ -41,7 +42,8 @@ class ArthSutradharAgent:
     the final response using Gemini 1.5 Pro.
     """
 
-    def __init__(self, project_id: str = "arth-sutradhar"):
+    def __init__(self, project_id: str | None = None):
+        self.project_id = project_id or agent_config.PROJECT_ID
         self.bq_tool = BigQueryVectorSearchTool()
         self.mcp_tool = MCPTool()
         self.state = AgentState(user_query="")
@@ -107,8 +109,8 @@ class ArthSutradharAgent:
                     for ind in indicators[:2]:
                         data = self.mcp_tool.get_data(
                             ds["id"], ind["id"],
-                            state_code="24",
-                            financial_year="2024-25",
+                            state_code=agent_config.STATE_CODE,
+                            financial_year=agent_config.FINANCIAL_YEAR,
                         )
                         data_points.extend(data)
                 self.state.retrieved_context["macro_data"] = data_points

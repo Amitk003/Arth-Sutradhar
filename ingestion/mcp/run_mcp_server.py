@@ -21,8 +21,10 @@ def ensure_repo():
         logger.info("MCP repo already exists at %s", MCP_DIR)
         return
     logger.info("Cloning MoSPI MCP repo from %s", MCP_REPO_URL)
+    subprocess.run(["git", "clone", MCP_REPO_URL, str(MCP_DIR)], check=True)
+    logger.info("Installing Python dependencies...")
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "mcp", "httpx"],
+        [sys.executable, "-m", "pip", "install", "-r", str(MCP_DIR / "requirements.txt")],
         check=True,
     )
 
@@ -30,8 +32,10 @@ def ensure_repo():
 def start_server():
     ensure_repo()
     logger.info("Starting e-Sankhyiki MCP server...")
-    cmd = [sys.executable, "-m", "mcp", "run", str(MCP_DIR / "mospi_server.py")]
-    subprocess.run(cmd, check=True)
+    subprocess.run(
+        [sys.executable, "-m", "mcp", "run", str(MCP_DIR / "mospi_server.py")],
+        check=True,
+    )
 
 
 if __name__ == "__main__":

@@ -43,9 +43,9 @@ User Input (Voice/Text/Image)
             │                      │
             ▼                      ▼
 ┌─────────────────────┐
-│  Gemini 1.5 Pro     │
-│  (Reasoning +       │
-│   Grounding)        │
+│  Report Formatter   │
+│  (Concatenates      │
+│   retrieved data)   │
 └─────────────────────┘
 ```
 
@@ -64,7 +64,7 @@ User Input (Voice/Text/Image)
 2. **Search**: Fanout Agent queries BigQuery + MCP in parallel
 3. **Context Check**: Sufficient Context Agent validates completeness
 4. **Iteration**: Query Rewriter fixes gaps, re-queries
-5. **Synthesis**: Gemini 1.5 Pro generates grounded response
+5. **Synthesis**: Formats retrieved data into structured report
 
 ## GCP Stack
 
